@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Running Crawl4AI post-compile steps"
+
+if command -v python >/dev/null 2>&1; then
+  echo "-> Installing Playwright Chromium browser"
+  python -m playwright install chromium
+else
+  echo "Warning: python command not found during post_compile"
+fi
+
+if command -v crawl4ai-setup >/dev/null 2>&1; then
+  echo "-> Running crawl4ai-setup"
+  crawl4ai-setup || true
+fi
+
+echo "Post-compile steps finished"

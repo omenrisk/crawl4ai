@@ -8,6 +8,14 @@ from pathlib import Path
 from fastapi import Request
 from typing import Dict, Optional
 
+
+def _get_env_bool(name: str) -> Optional[bool]:
+    """Return boolean env flag if provided, otherwise None."""
+    value = os.environ.get(name)
+    if value is None:
+        return None
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
 class TaskStatus(str, Enum):
     PROCESSING = "processing"
     FAILED = "failed"
@@ -24,6 +32,43 @@ def load_config() -> Dict:
     config_path = Path(__file__).parent / "config.yml"
     with open(config_path, "r") as config_file:
         config = yaml.safe_load(config_file)
+
+    config.setdefault("app", {})
+    config.setdefault("redis", {})
+    config.setdefault("rate_limiting", {})
+
+    app_port = os.environ.get("PORT") or os.environ.get("APP_PORT")
+    if app_port:
+        try:
+            config["app"]["port"] = int(app_port)
+        except ValueError:
+            logging.warning("Invalid PORT value '%s' – falling back to config", app_port)
+
+    app_host = os.environ.get("APP_HOST")
+    if app_host:
+        config["app"]["host"] = app_host
+
+    redis_url = os.environ.get("REDIS_URL") or os.environ.get("CACHE_URL")
+    if redis_url:
+        config["redis"]["uri"] = redis_url
+    else:
+        redis_host = os.environ.get("REDIS_HOST", config["redis"].get("host", "localhost"))
+        redis_port = os.environ.get("REDIS_PORT", config["redis"].get("port", 6379))
+        redis_password = os.environ.get("REDIS_PASSWORD", config["redis"].get("password", ""))
+        redis_db = os.environ.get("REDIS_DB", config["redis"].get("db", 0))
+        auth = f":{redis_password}@" if redis_password else ""
+        config["redis"]["uri"] = f"redis://{auth}{redis_host}:{redis_port}/{redis_db}"
+
+    storage_uri_env = os.environ.get("RATE_LIMIT_STORAGE_URI")
+    if storage_uri_env:
+        config["rate_limiting"]["storage_uri"] = storage_uri_env
+    elif config["rate_limiting"].get("storage_uri", "").startswith("memory://"):
+        config["rate_limiting"]["storage_uri"] = config["redis"]["uri"]
+
+    security_flag = _get_env_bool("SECURITY_ENABLED")
+    if security_flag is not None:
+        config.setdefault("security", {})
+        config["security"]["enabled"] = security_flag
     
     # Override LLM provider from environment if set
     llm_provider = os.environ.get("LLM_PROVIDER")

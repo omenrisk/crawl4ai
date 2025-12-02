@@ -107,6 +107,10 @@ crwl https://docs.crawl4ai.com --deep-crawl bfs --max-pages 10
 crwl https://www.example.com/products -q "Extract all product prices"
 ```
 
+## ☁️ Deploy to Heroku
+
+Want to run the FastAPI server on Heroku? The repo now includes `Procfile`, `runtime.txt`, `Aptfile`, and a `bin/post_compile` script so the platform can install Chromium/Playwright automatically. Follow the step-by-step guide in [`docs/heroku.md`](docs/heroku.md) for buildpack order, required config vars (e.g., `REDIS_URL`, `LLM_PROVIDER`), and verification tips.
+
 ## 💖 Support Crawl4AI
 
 > 🎉 **Sponsorship Program Now Open!** After powering 51K+ developers and 1 year of growth, Crawl4AI is launching dedicated support for **startups** and **enterprises**. Be among the first 50 **Founding Sponsors** for permanent recognition in our Hall of Fame.

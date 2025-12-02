@@ -34,3 +34,6 @@ shapely>=2.0.0
 fake-useragent>=2.2.0
 pdf2image>=1.17.0
 PyPDF2>=3.0.1
+
+# API/server dependencies used by hosted deployments (Heroku, Docker, etc.)
+-r deploy/docker/requirements.txt
