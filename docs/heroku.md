@@ -61,3 +61,14 @@ You can now promote the slug to production or scale dynos via `heroku ps:scale w
 - **30s request timeout**: long jobs should use `/crawl/job` or `/llm/job` so the dyno responds immediately while work continues in the background queue.
 
 That's it - pushing new commits will rebuild the slug with all dependencies needed for a fully hosted Crawl4AI deployment on Heroku.
+
+## 7. Container-based alternative
+
+If you prefer to ship the exact Docker image (Playwright browsers included) like `omen-process-api`, switch your app to the container stack and use the bundled `heroku.yml`:
+
+1. `heroku stack:set container -a <app>`
+2. `heroku container:login`
+3. `heroku container:push web -a <app>`
+4. `heroku container:release web -a <app>`
+
+The Dockerfile already sets `PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers`, installs all Chromium dependencies, and starts the API with `supervisord`. Config vars such as `REDIS_URL`, `LLM_PROVIDER`, and API keys are still required. This approach mirrors the workflow used in `omen-process-api` while keeping the codebase identical between slug and container deployments.

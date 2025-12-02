@@ -109,7 +109,10 @@ crwl https://www.example.com/products -q "Extract all product prices"
 
 ## ☁️ Deploy to Heroku
 
-Want to run the FastAPI server on Heroku? The repo now includes `Procfile`, `runtime.txt`, `Aptfile`, and a `bin/post_compile` script so the platform can install Chromium/Playwright automatically. Follow the step-by-step guide in [`docs/heroku.md`](docs/heroku.md) for buildpack order, required config vars (e.g., `REDIS_URL`, `LLM_PROVIDER`), and verification tips.
+Want to run the FastAPI server on Heroku? Pick the workflow that fits your needs:
+
+- **Slug build** – Use the provided `Procfile`, `runtime.txt`, `Aptfile`, and `bin/post_compile` to stay on the default stack. Follow the buildpack-based guide in [`docs/heroku.md`](docs/heroku.md) for config vars (`REDIS_URL`, `LLM_PROVIDER`, etc.) and verification tips.
+- **Container build** – Prefer the Docker workflow (similar to `omen-process-api`)? Use the existing `Dockerfile` plus the new `heroku.yml`, set the stack to `container`, and push via `heroku container:push web -a <app>` followed by `heroku container:release web -a <app>`. The Docker image already installs Chromium/Playwright and runs `supervisord` to launch the API.
 
 ## 💖 Support Crawl4AI
 

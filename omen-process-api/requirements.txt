@@ -1,0 +1,10 @@
+flask
+flask_cors
+python-dotenv
+openai
+aiohttp
+requests
+gunicorn
+bs4
+playwright
+pytest-playwright

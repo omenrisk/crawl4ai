@@ -20,7 +20,8 @@ ENV PYTHONFAULTHANDLER=1 \
     PIP_DEFAULT_TIMEOUT=100 \
     DEBIAN_FRONTEND=noninteractive \
     REDIS_HOST=localhost \
-    REDIS_PORT=6379
+    REDIS_PORT=6379 \
+    PLAYWRIGHT_BROWSERS_PATH=/app/.playwright-browsers
 
 ARG PYTHON_VERSION=3.12
 ARG INSTALL_TYPE=default
@@ -162,7 +163,11 @@ RUN crawl4ai-setup
 RUN playwright install --with-deps
 
 RUN mkdir -p /home/appuser/.cache/ms-playwright \
-    && cp -r /root/.cache/ms-playwright/chromium-* /home/appuser/.cache/ms-playwright/ \
+    && if compgen -G "/root/.cache/ms-playwright/chromium-*" > /dev/null; then \
+        cp -r /root/.cache/ms-playwright/chromium-* /home/appuser/.cache/ms-playwright/; \
+    else \
+        echo "No cached Playwright browsers found under /root/.cache/ms-playwright; skipping copy."; \
+    fi \
     && chown -R appuser:appuser /home/appuser/.cache/ms-playwright
 
 RUN crawl4ai-doctor
