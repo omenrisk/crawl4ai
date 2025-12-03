@@ -51,6 +51,7 @@ def load_config() -> Dict:
     redis_url = os.environ.get("REDIS_URL") or os.environ.get("CACHE_URL")
     if redis_url:
         config["redis"]["uri"] = redis_url
+        logging.info(f"Using Redis from environment variable: {redis_url.split('@')[-1]}")
     else:
         redis_host = os.environ.get("REDIS_HOST", config["redis"].get("host", "localhost"))
         redis_port = os.environ.get("REDIS_PORT", config["redis"].get("port", 6379))
@@ -58,6 +59,7 @@ def load_config() -> Dict:
         redis_db = os.environ.get("REDIS_DB", config["redis"].get("db", 0))
         auth = f":{redis_password}@" if redis_password else ""
         config["redis"]["uri"] = f"redis://{auth}{redis_host}:{redis_port}/{redis_db}"
+        logging.info(f"Using Redis from configuration: {redis_host}:{redis_port}")
 
     storage_uri_env = os.environ.get("RATE_LIMIT_STORAGE_URI")
     if storage_uri_env:

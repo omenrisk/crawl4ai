@@ -1,5 +1,5 @@
 # crawler_pool.py  (new file)
-import asyncio, json, hashlib, time, psutil
+import asyncio, json, hashlib, time, psutil, os
 from contextlib import suppress
 from typing import Dict
 from crawl4ai import AsyncWebCrawler, BrowserConfig
@@ -26,8 +26,22 @@ async def get_crawler(cfg: BrowserConfig) -> AsyncWebCrawler:
             if sig in POOL:
                 LAST_USED[sig] = time.time();  
                 return POOL[sig]
-            if psutil.virtual_memory().percent >= MEM_LIMIT:
-                raise MemoryError("RAM pressure – new browser denied")
+            try:
+                # Heroku specific memory handling
+                if 'DYNO' in os.environ:
+                    import resource
+                    mem_limit_bytes = os.environ.get('MEMORY_AVAILABLE', None)
+                    if mem_limit_bytes:
+                        mem_limit_mb = int(mem_limit_bytes) / (1024 * 1024)
+                        usage = resource.getrusage(resource.RUSAGE_SELF)
+                        current_mem_mb = usage.ru_maxrss / 1024  # Convert KB to MB
+                        if current_mem_mb > (mem_limit_mb * MEM_LIMIT / 100):
+                            raise MemoryError(f"Heroku memory limit reached: {current_mem_mb}MB/{mem_limit_mb}MB")
+                elif psutil.virtual_memory().percent >= MEM_LIMIT:
+                    raise MemoryError("RAM pressure – new browser denied")
+            except Exception as e:
+                import logging
+                logging.warning(f"Memory check failed: {e}. Continuing anyway.")
             crawler = AsyncWebCrawler(config=cfg, thread_safe=False)
             await crawler.start()
             POOL[sig] = crawler; LAST_USED[sig] = time.time()

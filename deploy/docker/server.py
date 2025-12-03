@@ -7,7 +7,7 @@ Crawl4AI FastAPI entry‑point
 """
 
 # ── stdlib & 3rd‑party imports ───────────────────────────────
-from crawler_pool import get_crawler, close_all, janitor
+from crawler_pool import get_crawler, close_all, janitor, POOL
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 from auth import create_access_token, get_token_dependency, TokenRequest
 from pydantic import BaseModel
@@ -103,10 +103,13 @@ AsyncWebCrawler.arun = capped_arun
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    await get_crawler(BrowserConfig(
-        extra_args=config["crawler"]["browser"].get("extra_args", []),
-        **config["crawler"]["browser"].get("kwargs", {}),
-    ))           # warm‑up
+    try:
+        await get_crawler(BrowserConfig(
+            extra_args=config["crawler"]["browser"].get("extra_args", []),
+            **config["crawler"]["browser"].get("kwargs", {}),
+        ))           # warm‑up
+    except Exception as e:
+        logging.warning(f"Browser initialization failed: {e}. Will retry on first request.")
     app.state.janitor = asyncio.create_task(janitor())        # idle GC
     yield
     app.state.janitor.cancel()
@@ -135,13 +138,40 @@ async def root():
     return RedirectResponse("/playground")
 
 # ─────────────────── infra / middleware  ─────────────────────
-redis = aioredis.from_url(config["redis"].get("uri", "redis://localhost"))
+try:
+    redis = aioredis.from_url(config["redis"].get("uri", "redis://localhost"))
+    logging.info(f"Connected to Redis at {config['redis'].get('uri', 'redis://localhost').split('@')[-1]}")
+except Exception as e:
+    logging.warning(f"Redis connection failed: {e}. Using in-memory fallback.")
+    # Use in-memory storage as fallback
+    class DummyRedis:
+        async def get(self, *args, **kwargs): return None
+        async def set(self, *args, **kwargs): return True
+        async def delete(self, *args, **kwargs): return True
+        async def exists(self, *args, **kwargs): return False
+        async def expire(self, *args, **kwargs): return True
+        async def incr(self, *args, **kwargs): return 1
+        async def ping(self, *args, **kwargs): return True
+    redis = DummyRedis()
 
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=[config["rate_limiting"]["default_limit"]],
-    storage_uri=config["rate_limiting"]["storage_uri"],
-)
+try:
+    storage_uri = config["rate_limiting"]["storage_uri"]
+    if "dummy" in locals() and isinstance(redis, DummyRedis):
+        storage_uri = "memory://"
+        logging.warning("Using memory storage for rate limiting due to Redis unavailability")
+    
+    limiter = Limiter(
+        key_func=get_remote_address,
+        default_limits=[config["rate_limiting"]["default_limit"]],
+        storage_uri=storage_uri,
+    )
+except Exception as e:
+    logging.warning(f"Failed to initialize rate limiter: {e}. Using default memory storage.")
+    limiter = Limiter(
+        key_func=get_remote_address,
+        default_limits=[config["rate_limiting"]["default_limit"]],
+        storage_uri="memory://",
+    )
 
 
 def _setup_security(app_: FastAPI):
@@ -530,7 +560,60 @@ def get_hook_example(hook_point: str) -> str:
 
 @app.get(config["observability"]["health_check"]["endpoint"])
 async def health():
-    return {"status": "ok", "timestamp": time.time(), "version": __version__}
+    health_info = {
+        "status": "ok", 
+        "timestamp": time.time(), 
+        "version": __version__,
+        "environment": os.environ.get("ENVIRONMENT", "production")
+    }
+    
+    # Check Redis connection
+    try:
+        if not isinstance(redis, DummyRedis):
+            await redis.ping()
+            health_info["redis"] = "connected"
+        else:
+            health_info["redis"] = "using dummy implementation"
+    except Exception as e:
+        health_info["redis"] = f"error: {str(e)}"
+        health_info["status"] = "degraded"
+    
+    # Check browser availability
+    try:
+        if len(POOL) > 0:
+            health_info["browser_pool"] = f"available ({len(POOL)} instances)"
+        else:
+            health_info["browser_pool"] = "empty"
+            health_info["status"] = "degraded"
+    except Exception as e:
+        health_info["browser_pool"] = f"error: {str(e)}"
+        health_info["status"] = "degraded"
+    
+    # Check memory
+    try:
+        if 'DYNO' in os.environ:
+            import resource
+            mem_limit_bytes = os.environ.get('MEMORY_AVAILABLE')
+            if mem_limit_bytes:
+                mem_limit_mb = int(mem_limit_bytes) / (1024 * 1024)
+                usage = resource.getrusage(resource.RUSAGE_SELF)
+                current_mem_mb = usage.ru_maxrss / 1024  # Convert KB to MB
+                health_info["memory"] = f"{current_mem_mb:.1f}MB/{mem_limit_mb:.1f}MB ({current_mem_mb/mem_limit_mb*100:.1f}%)"
+                if current_mem_mb > (mem_limit_mb * 0.9):
+                    health_info["status"] = "degraded"
+        else:
+            vm = psutil.virtual_memory()
+            health_info["memory"] = f"{vm.percent}% used"
+            if vm.percent > 90:
+                health_info["status"] = "degraded"
+    except Exception as e:
+        health_info["memory"] = f"error checking memory: {str(e)}"
+    
+    # Return appropriate status code
+    if health_info["status"] == "ok":
+        return health_info
+    else:
+        return JSONResponse(content=health_info, status_code=200)  # Still return 200 to avoid restarts
 
 
 @app.get(config["observability"]["prometheus"]["endpoint"])
