@@ -16,6 +16,7 @@ from fastapi import Request, Depends
 from fastapi.responses import FileResponse
 import base64
 import re
+import logging
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
 from api import (
     handle_markdown_request, handle_llm_qa,
