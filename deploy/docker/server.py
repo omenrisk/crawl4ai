@@ -123,20 +123,25 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ── static playground ──────────────────────────────────────
-STATIC_DIR = pathlib.Path(__file__).parent / "static" / "playground"
-if not STATIC_DIR.exists():
-    raise RuntimeError(f"Playground assets not found at {STATIC_DIR}")
-app.mount(
-    "/playground",
-    StaticFiles(directory=STATIC_DIR, html=True),
-    name="play",
-)
+PLAYGROUND_ENABLED = config["app"].get("playground_enabled", True)
+
+# ── static playground (optional) ────────────────────────────
+if PLAYGROUND_ENABLED:
+    STATIC_DIR = pathlib.Path(__file__).parent / "static" / "playground"
+    if not STATIC_DIR.exists():
+        raise RuntimeError(f"Playground assets not found at {STATIC_DIR}")
+    app.mount(
+        "/playground",
+        StaticFiles(directory=STATIC_DIR, html=True),
+        name="play",
+    )
 
 
 @app.get("/")
 async def root():
-    return RedirectResponse("/playground")
+    if PLAYGROUND_ENABLED:
+        return RedirectResponse("/playground")
+    return JSONResponse({"status": "ok"})
 
 # ─────────────────── infra / middleware  ─────────────────────
 try:
@@ -193,6 +198,24 @@ if config["observability"]["prometheus"]["enabled"]:
     Instrumentator().instrument(app).expose(app)
 
 token_dep = get_token_dependency(config)
+
+API_KEY = config["security"].get("api_key")
+PROTECTED_PREFIXES = ("/crawl", "/md", "/llm", "/api")
+EXEMPT_PATHS = {"/", "/health", "/openapi.json", "/docs", "/redoc"}
+
+
+@app.middleware("http")
+async def api_key_guard(request: Request, call_next):
+    if not API_KEY:
+        return await call_next(request)
+    path = request.url.path
+    if path in EXEMPT_PATHS or path.startswith("/static") or path.startswith("/playground"):
+        return await call_next(request)
+    if any(path.startswith(p) for p in PROTECTED_PREFIXES):
+        header = request.headers.get("X-API-Key")
+        if header != API_KEY:
+            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+    return await call_next(request)
 
 
 @app.middleware("http")

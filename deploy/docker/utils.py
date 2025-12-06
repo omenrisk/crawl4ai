@@ -48,6 +48,12 @@ def load_config() -> Dict:
     if app_host:
         config["app"]["host"] = app_host
 
+    playground_flag = _get_env_bool("PLAYGROUND_ENABLED")
+    if playground_flag is not None:
+        config["app"]["playground_enabled"] = playground_flag
+    else:
+        config["app"].setdefault("playground_enabled", True)
+
     redis_url = os.environ.get("REDIS_URL") or os.environ.get("CACHE_URL")
     if redis_url:
         config["redis"]["uri"] = redis_url
@@ -71,6 +77,11 @@ def load_config() -> Dict:
     if security_flag is not None:
         config.setdefault("security", {})
         config["security"]["enabled"] = security_flag
+
+    api_key = os.environ.get("API_KEY")
+    if api_key:
+        config.setdefault("security", {})
+        config["security"]["api_key"] = api_key
     
     # Override LLM provider from environment if set
     llm_provider = os.environ.get("LLM_PROVIDER")

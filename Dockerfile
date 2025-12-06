@@ -75,9 +75,6 @@ RUN pip install --no-cache-dir gunicorn
 COPY --from=builder /root/.local /root/.local
 ENV PATH="/root/.local/bin:${PATH}"
 
-# Ensure psutil is present/updated in the runtime image
-RUN pip install --no-cache-dir --upgrade psutil
-
 ###############################################
 # Copy application files
 ###############################################

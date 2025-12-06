@@ -977,6 +977,26 @@ You can override the default `config.yml`.
 
 > 💡 When mounting, your custom file *completely replaces* the default one. Ensure it's a valid and complete configuration.
 
+### Secure the API with an API key (X-API-Key)
+
+Set an API key via env and pass it on every request:
+
+```bash
+docker run -d -p 8080:11235 \
+  --name crawl4ai \
+  --shm-size=1g \
+  -e API_KEY=supersecret \
+  unclecode/crawl4ai:latest
+```
+
+Call the API with the header:
+
+```
+X-API-Key: supersecret
+```
+
+If you want to disable the playground UI in production, set `PLAYGROUND_ENABLED=false`.
+
 ### Configuration Recommendations
 
 1. **Security First** 🔒
