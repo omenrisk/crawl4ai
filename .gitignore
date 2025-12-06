@@ -235,6 +235,8 @@ tree.md
 .scripts
 .local
 .do
+!.do/
+!.do/app.yaml
 /plans
 plans/
 

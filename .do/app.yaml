@@ -1,0 +1,66 @@
+#
+# DigitalOcean App Platform spec for Crawl4AI
+# Use `doctl apps create --spec .do/app.yaml` to provision the service.
+#
+name: crawl4ai
+region: nyc
+alerts:
+  - rule: DEPLOYMENT_FAILED
+    disabled: false
+  - rule: DOMAIN_FAILED
+    disabled: false
+
+services:
+  - name: crawl4ai-web
+    source_dir: .
+    github:
+      repo: unclecode/crawl4ai
+      branch: main
+      deploy_on_push: true
+    dockerfile_path: Dockerfile
+    http_port: 11235
+    instance_count: 1
+    instance_size_slug: professional-xs
+    routes:
+      - path: /
+    envs:
+      - key: APP_ENV
+        scope: RUN_TIME
+        value: production
+      - key: LLM_PROVIDER
+        scope: RUN_AND_BUILD_TIME
+        value: openai/gpt-4o-mini
+      - key: OPENAI_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: ${OPENAI_API_KEY}
+      - key: ANTHROPIC_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: ${ANTHROPIC_API_KEY}
+      - key: GROQ_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: ${GROQ_API_KEY}
+      - key: TOGETHER_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: ${TOGETHER_API_KEY}
+      - key: MISTRAL_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: ${MISTRAL_API_KEY}
+      - key: DEEPSEEK_API_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: ${DEEPSEEK_API_KEY}
+      - key: GEMINI_API_TOKEN
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+        value: ${GEMINI_API_TOKEN}
+      - key: SECURITY_ENABLED
+        scope: RUN_TIME
+        value: "false"
+      - key: RATE_LIMIT_STORAGE_URI
+        scope: RUN_TIME
+        value: redis://localhost:6379/0

@@ -114,6 +114,24 @@ Want to run the FastAPI server on Heroku? Pick the workflow that fits your needs
 - **Slug build** – Use the provided `Procfile`, `runtime.txt`, `Aptfile`, and `bin/post_compile` to stay on the default stack. Follow the buildpack-based guide in [`docs/heroku.md`](docs/heroku.md) for config vars (`REDIS_URL`, `LLM_PROVIDER`, etc.) and verification tips.
 - **Container build** – Prefer the Docker workflow (similar to `omen-process-api`)? Use the existing `Dockerfile` plus the new `heroku.yml`, set the stack to `container`, and push via `heroku container:push web -a <app>` followed by `heroku container:release web -a <app>`. The Docker image already installs Chromium/Playwright and runs `supervisord` to launch the API.
 
+## ☁️ Deploy to DigitalOcean App Platform
+
+DigitalOcean’s App Platform can now consume the repo out of the box via the spec in `.do/app.yaml`. The service is built from the existing `Dockerfile`, so Chromium, Playwright, Redis, and Gunicorn come pre-installed just like in the Docker/Compose workflow.
+
+1. **Install and authenticate `doctl`:**
+   ```bash
+   doctl auth init
+   ```
+2. **Populate the secrets referenced in `.do/app.yaml`** (OpenAI, Anthropic, Groq, Together, DeepSeek, Mistral, Gemini). You can either export them locally so `doctl` substitutes `${OPENAI_API_KEY}` style placeholders or edit the spec to hardcode values inside the `envs` block before deploying.
+3. **Review the defaults** – `region` is set to `nyc`, the plan size is `professional-xs`, and the container listens on port `11235`. Change those fields if you want a different region/size or autoscaling behavior.
+4. **Create the App Platform deployment:**
+   ```bash
+   doctl apps create --spec .do/app.yaml
+   ```
+   When you need to roll out updates, rerun `doctl apps update <app-id> --spec .do/app.yaml`. The build hooks automatically run `supervisord`, which bootstraps Redis and Gunicorn, and the `/health` endpoint becomes available as soon as Gunicorn finishes warming up Playwright.
+
+After the deployment becomes active, the Crawl4AI playground lives at `https://<your-app>.ondigitalocean.app/playground`. Use the App Platform dashboard to add extra environment variables (e.g., `LLM_PROVIDER`, `RATE_LIMIT_STORAGE_URI`, or JWT settings) without touching the spec.
+
 ## 💖 Support Crawl4AI
 
 > 🎉 **Sponsorship Program Now Open!** After powering 51K+ developers and 1 year of growth, Crawl4AI is launching dedicated support for **startups** and **enterprises**. Be among the first 50 **Founding Sponsors** for permanent recognition in our Hall of Fame.
