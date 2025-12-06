@@ -1,1 +1,0 @@
-web: python -m playwright install && PYTHONPATH=deploy/docker:$PYTHONPATH gunicorn deploy.docker.server:app --bind 0.0.0.0:$PORT --workers ${WEB_CONCURRENCY:-1} --threads ${WEB_THREADS:-4} --timeout ${WEB_TIMEOUT:-1800} --graceful-timeout 30 --worker-class uvicorn.workers.UvicornWorker
