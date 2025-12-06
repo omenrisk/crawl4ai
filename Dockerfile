@@ -66,6 +66,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Install gunicorn globally so it is available for the non-root runtime user
+RUN pip install --no-cache-dir gunicorn
+
 ###############################################
 # Copy Python dependencies from builder stage
 ###############################################
