@@ -1,0 +1,28 @@
+name: crawl4ai-app
+region: nyc
+services:
+  - name: crawl4ai
+    dockerfile_path: Dockerfile
+    source_dir: /
+    github:
+      repo: your-username/your-repo-name
+      branch: main
+      deploy_on_push: true
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-s
+    envs:
+      - key: PYTHON_ENV
+        value: production
+      - key: REDIS_HOST
+        value: localhost
+      - key: REDIS_PORT
+        value: "6379"
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 20
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3
+
