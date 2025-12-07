@@ -23,13 +23,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy project first for dependency resolution
 COPY deploy/docker/requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project source
 COPY . /tmp/project/
 
 # Install the Crawl4AI project
-RUN pip install --user --no-cache-dir /tmp/project/
+RUN pip install --no-cache-dir /tmp/project/
 
 ###############################################
 # Stage 2: Runtime – slim & fast
@@ -72,8 +72,7 @@ RUN pip install --no-cache-dir gunicorn
 ###############################################
 # Copy Python dependencies from builder stage
 ###############################################
-COPY --from=builder /root/.local /root/.local
-ENV PATH="/root/.local/bin:${PATH}"
+COPY --from=builder /usr/local /usr/local
 
 ###############################################
 # Copy application files
