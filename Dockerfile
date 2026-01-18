@@ -28,7 +28,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project source
 COPY . /tmp/project/
 
-# Install the Crawl4AI project
+# Install the Crawl4AI project (system-wide so runtime user can import packages)
 RUN pip install --no-cache-dir /tmp/project/
 
 ###############################################
@@ -67,7 +67,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install gunicorn globally so it is available for the non-root runtime user
-RUN pip install --no-cache-dir gunicorn
+RUN pip install --no-cache-dir gunicorn psutil
 
 ###############################################
 # Copy Python dependencies from builder stage
